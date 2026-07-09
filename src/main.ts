@@ -663,6 +663,71 @@ export default class ClozePlugin extends Plugin {
 		return null;
 	}
 
+	private getClozeRemovalPatterns() {
+		const patterns = [
+			/<span[^>]*class=["'][^"']*cloze-span[^"']*["'][^>]*>([\s\S]*?)<\/span>/g,
+		];
+
+		if (this.settings.includeHighlighted) {
+			patterns.push(/==([\s\S]*?)==/g);
+		}
+		if (this.settings.includeUnderlined) {
+			patterns.push(/<u>([\s\S]*?)<\/u>/g);
+		}
+		if (this.settings.includeBolded) {
+			patterns.push(/\*\*([\s\S]*?)\*\*/g);
+		}
+		if (this.settings.includeItalics) {
+			patterns.push(/\*([^*\n]+?)\*/g);
+		}
+		if (this.settings.includeBracketed) {
+			patterns.push(/\[([^\]\n]*?)\]/g);
+		}
+		if (this.settings.includeCurlyBrackets) {
+			patterns.push(/\{([^{}\n]*?)\}/g);
+		}
+
+		return patterns;
+	}
+
+	private removeClozeSyntax(value: string): string {
+		let result = value;
+		this.getClozeRemovalPatterns().forEach((pattern) => {
+			result = result.replace(pattern, '$1');
+		});
+		return result;
+	}
+
+	private findOverlappingCloze(lineText: string, rangeStart: number, rangeEnd: number) {
+		for (const pattern of this.getClozeRemovalPatterns()) {
+			pattern.lastIndex = 0;
+			let match: RegExpExecArray | null;
+
+			while ((match = pattern.exec(lineText)) !== null) {
+				const start = match.index;
+				const end = start + match[0].length;
+				const overlaps = rangeStart <= end && rangeEnd >= start;
+				if (overlaps) {
+					return {
+						start,
+						end,
+						content: match[1],
+					};
+				}
+
+				if (pattern.lastIndex === match.index) {
+					pattern.lastIndex += 1;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private findEnclosingCloze(lineText: string, cursorCh: number) {
+		return this.findOverlappingCloze(lineText, cursorCh, cursorCh);
+	}
+
 	removeErrorCorrection = (editor: Editor) => {
 		const currentStr = editor.getSelection();
 		const open = this.settings.errorCorrectionOpen;
@@ -718,9 +783,45 @@ export default class ClozePlugin extends Plugin {
 
 	removeCloze = (editor: Editor) => {
 		const currentStr = editor.getSelection();
-		const newStr = currentStr
-			.replace(/<span.*?class="cloze-span".*?>(.*?)<\/span>/g, "$1");
-		editor.replaceSelection(newStr);
+		if (currentStr) {
+			const from = editor.getCursor('from');
+			const to = editor.getCursor('to');
+			const newStr = this.removeClozeSyntax(currentStr);
+			if (newStr !== currentStr) {
+				editor.replaceSelection(newStr);
+				editor.focus();
+				return;
+			}
+
+			if (from.line === to.line) {
+				const lineText = editor.getLine(from.line);
+				const target = this.findOverlappingCloze(lineText, from.ch, to.ch);
+				if (target) {
+					editor.replaceRange(
+						target.content,
+						{ line: from.line, ch: target.start },
+						{ line: from.line, ch: target.end }
+					);
+					editor.setCursor({ line: from.line, ch: target.start + target.content.length });
+					editor.focus();
+				}
+			}
+
+			return;
+		}
+
+		const cursor = editor.getCursor();
+		const lineText = editor.getLine(cursor.line);
+		const target = this.findEnclosingCloze(lineText, cursor.ch);
+		if (!target) return;
+
+		editor.replaceRange(
+			target.content,
+			{ line: cursor.line, ch: target.start },
+			{ line: cursor.line, ch: target.end }
+		);
+		editor.setCursor({ line: cursor.line, ch: target.start + target.content.length });
+		editor.focus();
 	};
 
 	revealMoreHint = ($cloze: HTMLElement) => {
