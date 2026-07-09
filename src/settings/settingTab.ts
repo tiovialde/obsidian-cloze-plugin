@@ -250,6 +250,14 @@ class SettingTab extends PluginSettingTab {
 				this.plugin.settings.editorMenuRemoveCloze = value;
 				this.plugin.saveSettings();
 			}))
+		new Setting(containerEl)
+		.setName(lang.setting_editor_menu_remove_error_correction)
+		.addToggle(toggle => toggle
+			.setValue(this.plugin.settings.editorMenuRemoveErrorCorrection)
+			.onChange(value => {
+				this.plugin.settings.editorMenuRemoveErrorCorrection = value;
+				this.plugin.saveSettings();
+			}))
 	}
 
 	displayContact(containerEl: HTMLElement) : void {

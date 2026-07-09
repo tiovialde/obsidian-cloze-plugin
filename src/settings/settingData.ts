@@ -12,6 +12,7 @@ export interface ClozePluginSettings {
 	editorMenuAddCloze: boolean;
 	editorMenuAddClozeWithHint: boolean;
 	editorMenuRemoveCloze: boolean;
+	editorMenuRemoveErrorCorrection: boolean;
 	errorCorrectionOpen: string;
 	errorCorrectionDelimiter: string;
 	errorCorrectionClose: string;
@@ -41,6 +42,7 @@ const DEFAULT_SETTINGS: ClozePluginSettings = {
 	editorMenuAddCloze: true,
 	editorMenuAddClozeWithHint: true,
 	editorMenuRemoveCloze: true,
+	editorMenuRemoveErrorCorrection: true,
 	errorCorrectionOpen: '{',
 	errorCorrectionDelimiter: '/',
 	errorCorrectionClose: '}',

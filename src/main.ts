@@ -11,7 +11,7 @@ import errorCorrections from './error-corrections';
 const ERROR_CORRECTION_ICON = 'spell-check-2';
 
 export default class ClozePlugin extends Plugin {
-	settings: ClozePluginSettings;
+	settings!: ClozePluginSettings;
 	errorCorrectionRibbonEl: HTMLElement | null = null;
 
 	isSourceHide = false;
@@ -55,43 +55,54 @@ export default class ClozePlugin extends Plugin {
 				editor: Editor
 			): void => {
 				const selection = editor.getSelection();
-				if (selection && this.checkTags()) {
-					menu.addItem((item) => {
-						item
-							.setTitle(lang.add_error_correction)
-							.onClick((e) => {
-								this.addErrorCorrection(editor);
-							});
-					});
+				if (this.checkTags()) {
+					if (selection) {
+						menu.addItem((item) => {
+							item
+								.setTitle(lang.add_error_correction)
+								.onClick((e) => {
+									this.addErrorCorrection(editor);
+								});
+						});
 
-					if(this.settings.editorMenuAddCloze) {
-						menu.addItem((item) => {
-							item
-								.setTitle(lang.add_cloze)
-								.onClick((e) => {
-									this.addCloze(editor);
-								});
-						});
+						if(this.settings.editorMenuAddCloze) {
+							menu.addItem((item) => {
+								item
+									.setTitle(lang.add_cloze)
+									.onClick((e) => {
+										this.addCloze(editor);
+									});
+							});
+						}
+						if (this.settings.editorMenuAddClozeWithHint) {
+							menu.addItem((item) => {
+								item
+									.setTitle(lang.add_cloze_with_hint)
+									.onClick((e) => {
+										this.addCloze(editor, true);
+									});
+							});
+						}
+						if (this.settings.editorMenuRemoveCloze) {
+							menu.addItem((item) => {
+								item
+									.setTitle(lang.remove_cloze)
+									.onClick((e) => {
+										this.removeCloze(editor);
+									});
+							});
+						}
+
+						if (this.settings.editorMenuRemoveErrorCorrection) {
+							menu.addItem((item) => {
+								item
+									.setTitle(lang.remove_error_correction)
+									.onClick((e) => {
+										this.removeErrorCorrection(editor);
+									});
+							});
+						}
 					}
-					if (this.settings.editorMenuAddClozeWithHint) {
-						menu.addItem((item) => {
-							item
-								.setTitle(lang.add_cloze_with_hint)
-								.onClick((e) => {
-									this.addCloze(editor, true);
-								});
-						});
-					}
-					if (this.settings.editorMenuRemoveCloze) {
-						menu.addItem((item) => {
-							item
-								.setTitle(lang.remove_cloze)
-								.onClick((e) => {
-									this.removeCloze(editor);
-								});
-						});
-					}
-					
 				}
 			})
 		);
@@ -290,8 +301,6 @@ export default class ClozePlugin extends Plugin {
 	}
 
 	private onErrorCorrectionRightClick(event: MouseEvent, correctionEl: HTMLElement) {
-		if (errorCorrections.isErrorCorrectionResolved(correctionEl)) return;
-
 		const menu = new Menu();
 		menu.addItem((item) =>
 			item
@@ -597,6 +606,113 @@ export default class ClozePlugin extends Plugin {
 			line: selectionStart.line,
 			ch: selectionStart.ch + open.length,
 		});
+		editor.focus();
+	}
+
+	private escapeRegex(value: string): string {
+		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
+	private findEnclosingErrorCorrection(lineText: string, cursorCh: number, open: string, delimiter: string, close: string) {
+		const pattern = `${this.escapeRegex(open)}\\s*([\\s\\S]*?)\\s*${this.escapeRegex(delimiter)}\\s*([\\s\\S]*?)\\s*${this.escapeRegex(close)}`;
+		const regex = new RegExp(pattern, 'g');
+		let match: RegExpExecArray | null;
+
+		while ((match = regex.exec(lineText)) !== null) {
+			const start = match.index;
+			const end = start + match[0].length;
+			if (cursorCh >= start && cursorCh <= end) {
+				return {
+					start,
+					end,
+					correct: match[2].trim(),
+				};
+			}
+
+			// Avoid potential infinite loops on zero-length matches.
+			if (regex.lastIndex === match.index) {
+				regex.lastIndex += 1;
+			}
+		}
+
+		return null;
+	}
+
+	private findOverlappingErrorCorrection(lineText: string, rangeStart: number, rangeEnd: number, open: string, delimiter: string, close: string) {
+		const pattern = `${this.escapeRegex(open)}\\s*([\\s\\S]*?)\\s*${this.escapeRegex(delimiter)}\\s*([\\s\\S]*?)\\s*${this.escapeRegex(close)}`;
+		const regex = new RegExp(pattern, 'g');
+		let match: RegExpExecArray | null;
+
+		while ((match = regex.exec(lineText)) !== null) {
+			const start = match.index;
+			const end = start + match[0].length;
+			const overlaps = rangeStart <= end && rangeEnd >= start;
+			if (overlaps) {
+				return {
+					start,
+					end,
+					correct: match[2].trim(),
+				};
+			}
+
+			if (regex.lastIndex === match.index) {
+				regex.lastIndex += 1;
+			}
+		}
+
+		return null;
+	}
+
+	removeErrorCorrection = (editor: Editor) => {
+		const currentStr = editor.getSelection();
+		const open = this.settings.errorCorrectionOpen;
+		const delimiter = this.settings.errorCorrectionDelimiter;
+		const close = this.settings.errorCorrectionClose;
+		if (!open || !delimiter || !close) return;
+
+		if (currentStr) {
+			const from = editor.getCursor('from');
+			const to = editor.getCursor('to');
+			const pattern = `${this.escapeRegex(open)}\\s*([\\s\\S]*?)\\s*${this.escapeRegex(delimiter)}\\s*([\\s\\S]*?)\\s*${this.escapeRegex(close)}`;
+			const regex = new RegExp(pattern, 'g');
+			const newStr = currentStr.replace(regex, (_, wrong: string, correct: string) => {
+				void wrong;
+				return correct.trim();
+			});
+			if (newStr !== currentStr) {
+				editor.replaceSelection(newStr);
+				editor.focus();
+				return;
+			}
+
+			if (from.line === to.line) {
+				const lineText = editor.getLine(from.line);
+				const target = this.findOverlappingErrorCorrection(lineText, from.ch, to.ch, open, delimiter, close);
+				if (target) {
+					editor.replaceRange(
+						target.correct,
+						{ line: from.line, ch: target.start },
+						{ line: from.line, ch: target.end }
+					);
+					editor.setCursor({ line: from.line, ch: target.start + target.correct.length });
+					editor.focus();
+				}
+			}
+
+			return;
+		}
+
+		const cursor = editor.getCursor();
+		const lineText = editor.getLine(cursor.line);
+		const target = this.findEnclosingErrorCorrection(lineText, cursor.ch, open, delimiter, close);
+		if (!target) return;
+
+		editor.replaceRange(
+			target.correct,
+			{ line: cursor.line, ch: target.start },
+			{ line: cursor.line, ch: target.end }
+		);
+		editor.setCursor({ line: cursor.line, ch: target.start + target.correct.length });
 		editor.focus();
 	}
 

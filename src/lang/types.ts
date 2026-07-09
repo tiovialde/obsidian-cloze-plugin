@@ -1,5 +1,6 @@
 export interface Ilangs {
     add_error_correction: string;
+    remove_error_correction: string;
     add_cloze: string;
 	add_cloze_with_hint: string;
     remove_cloze: string;
@@ -33,6 +34,7 @@ export interface Ilangs {
 	setting_editor_menu_add_cloze: string;
 	setting_editor_menu_add_cloze_with_hint: string;
 	setting_editor_menu_remove_cloze: string;
+    setting_editor_menu_remove_error_correction: string;
     setting_error_correction: string;
     setting_error_correction_open: string;
     setting_error_correction_open_desc: string;

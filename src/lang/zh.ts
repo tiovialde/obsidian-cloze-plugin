@@ -2,6 +2,7 @@ import { Ilangs } from './types';
 
 const langs: Ilangs = {
 	add_error_correction: "添加改错",
+	remove_error_correction: "移除改错",
     add_cloze: "添加填空",
 	add_cloze_with_hint: "添加带提示的填空",
     remove_cloze: "移除填空",
@@ -35,6 +36,7 @@ const langs: Ilangs = {
 	setting_editor_menu_add_cloze: '显示添加填空按钮',
 	setting_editor_menu_add_cloze_with_hint: '显示添加带提示的填空按钮',
 	setting_editor_menu_remove_cloze: '显示移除填空按钮',
+	setting_editor_menu_remove_error_correction: '显示移除改错按钮',
     setting_error_correction: "改错",
 	setting_error_correction_open: "起始符号",
 	setting_error_correction_open_desc: "包裹整段改错语法前面的符号。",

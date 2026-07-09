@@ -23,6 +23,7 @@ By enabling the following settings, the corresponding text will also automatical
 Select any text and right-click to open the Editor Menu. 
 
 - Add error correction: Wrap selected text as an error-correction template using your configured symbols (Open + Delimiter + selected text + Close), then place the cursor right after Open so you can type the wrong text immediately.
+- Remove error correction: Convert selected error-correction patterns back to plain correction text (e.g. `{error/correction}` -> `correction`).
 - Create cloze: Quickly convert the selection into a cloze.
 - Create cloze with hint: You will be prompted to input a hint for the cloze first.
 - Remove cloze: Batch remove clozes from the selected text.
@@ -109,6 +110,11 @@ The plugin is active on all notes by default, but you can configure it to only a
 #### Customized Editor Menu
 
 You can customize editor menu by enabling/disabling the following settings.
+
+- Display add cloze button
+- Display add cloze with hint button
+- Display remove cloze button
+- Display remove error correction button
 
 <img src="https://raw.githubusercontent.com/dearvikki/obsidian-cloze-plugin/main/assets/setting-editor-menu.png" />
 

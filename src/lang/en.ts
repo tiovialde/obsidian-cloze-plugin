@@ -2,6 +2,7 @@ import { Ilangs } from './types';
 
 const langs: Ilangs = {
 	add_error_correction: 'Add error correction',
+	remove_error_correction: 'Remove error correction',
     add_cloze: 'Create cloze',
 	add_cloze_with_hint: 'Create cloze with hint',
     remove_cloze: 'Remove cloze',
@@ -35,6 +36,7 @@ const langs: Ilangs = {
 	setting_editor_menu_add_cloze: 'Display add cloze button',
 	setting_editor_menu_add_cloze_with_hint: 'Display add cloze with hint button',
 	setting_editor_menu_remove_cloze: 'Display remove cloze button',
+	setting_editor_menu_remove_error_correction: 'Display remove error correction button',
     setting_error_correction: 'Error correction',
 	setting_error_correction_open: 'Open symbol',
 	setting_error_correction_open_desc: 'Symbol(s) inserted before the whole error-correction pattern.',
