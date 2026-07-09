@@ -1,9 +1,13 @@
 export interface Ilangs {
+    add_error_correction: string;
     add_cloze: string;
 	add_cloze_with_hint: string;
     remove_cloze: string;
     toggle_cloze: string;
     toggle_error_correction_hints: string;
+    toggle_error_correction_hints_mark: string;
+    toggle_error_correction_hints_resolve: string;
+    toggle_error_correction_hints_reset: string;
 	reveal_more_hint: string;
 	reveal_error_correction_hints: string;
     setting_selector_tag: string;
@@ -29,6 +33,13 @@ export interface Ilangs {
 	setting_editor_menu_add_cloze: string;
 	setting_editor_menu_add_cloze_with_hint: string;
 	setting_editor_menu_remove_cloze: string;
+    setting_error_correction: string;
+    setting_error_correction_open: string;
+    setting_error_correction_open_desc: string;
+    setting_error_correction_delimiter: string;
+    setting_error_correction_delimiter_desc: string;
+    setting_error_correction_close: string;
+    setting_error_correction_close_desc: string;
     setting_custom_setting: string;
     setting_fixed_cloze_width: string;
     setting_fixed_cloze_width_desc: string;

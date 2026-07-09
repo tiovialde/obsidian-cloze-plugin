@@ -22,8 +22,45 @@ class SettingTab extends PluginSettingTab {
 		this.displayAutoConvert(containerEl);
 		this.displayCustomSetting(containerEl);
 		this.displayHintSetting(containerEl);
+		this.displayErrorCorrectionSetting(containerEl);
 		this.displayEditorMenuSetting(containerEl);
 		this.displayContact(containerEl);
+	}
+
+	displayErrorCorrectionSetting(containerEl: HTMLElement) : void {
+		containerEl.createEl('h2', { text: lang.setting_error_correction });
+		new Setting(containerEl)
+			.setName(lang.setting_error_correction_open)
+			.setDesc(lang.setting_error_correction_open_desc)
+			.addText((text) => text
+				.setValue(this.plugin.settings.errorCorrectionOpen)
+				.onChange(async (value) => {
+					const normalized = value || '{';
+					this.plugin.settings.errorCorrectionOpen = normalized;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName(lang.setting_error_correction_delimiter)
+			.setDesc(lang.setting_error_correction_delimiter_desc)
+			.addText((text) => text
+				.setValue(this.plugin.settings.errorCorrectionDelimiter)
+				.onChange(async (value) => {
+					const normalized = value || '/';
+					this.plugin.settings.errorCorrectionDelimiter = normalized;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName(lang.setting_error_correction_close)
+			.setDesc(lang.setting_error_correction_close_desc)
+			.addText((text) => text
+				.setValue(this.plugin.settings.errorCorrectionClose)
+				.onChange(async (value) => {
+					const normalized = value || '}';
+					this.plugin.settings.errorCorrectionClose = normalized;
+					await this.plugin.saveSettings();
+				}));
 	}
 
 	displayAutoConvert(containerEl: HTMLElement) : void {

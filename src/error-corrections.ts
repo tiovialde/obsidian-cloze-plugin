@@ -1,20 +1,31 @@
 import { ATTRS, CLASSES } from './const';
 
 export interface ErrorCorrectionSyntax {
-	wrongPrefix: string;
-	wrongSuffix: string;
-	correctPrefix: string;
-	correctSuffix: string;
+	open: string;
+	delimiter: string;
+	close: string;
 }
 
 export const DEFAULT_ERROR_CORRECTION_SYNTAX: ErrorCorrectionSyntax = {
-	wrongPrefix: '~~',
-	wrongSuffix: '~~',
-	correctPrefix: '==',
-	correctSuffix: '==',
+	open: '{',
+	delimiter: '/',
+	close: '}',
 };
 
-const ERROR_CORRECTION_RE = /\{([^{}\/]+)\/([^{}]+)\}/g;
+function escapeRegex(input: string): string {
+	return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildErrorCorrectionRegex(syntax: ErrorCorrectionSyntax): RegExp | null {
+	const open = syntax.open;
+	const delimiter = syntax.delimiter;
+	const close = syntax.close;
+	if (!open || !delimiter || !close) {
+		return null;
+	}
+
+	return new RegExp(`${escapeRegex(open)}\\s*([\\s\\S]*?)\\s*${escapeRegex(delimiter)}\\s*([\\s\\S]*?)\\s*${escapeRegex(close)}`, 'g');
+}
 
 function escapeHtml(input: string): string {
 	return input
@@ -39,11 +50,16 @@ function renderCollapsedElementHtml(wrongText: string, correctText: string): str
 	return `<span class="${CLASSES.errorCorrection}" ${ATTRS.errorCorrectionWrong}="${escapeHtml(wrongText)}" ${ATTRS.errorCorrectionCorrect}="${escapeHtml(correctText)}" ${ATTRS.errorCorrectionResolved}="false" ${ATTRS.errorCorrectionMarkerVisible}="false">${escapeHtml(wrongText)}</span>`;
 }
 
-export function transformErrorCorrectionText(element: HTMLElement): void {
+export function transformErrorCorrectionText(element: HTMLElement, syntax: ErrorCorrectionSyntax = DEFAULT_ERROR_CORRECTION_SYNTAX): void {
+	const regex = buildErrorCorrectionRegex(syntax);
+	if (!regex) {
+		return;
+	}
+
 	const items = element.querySelectorAll('p, h1, h2, h3, h4, h5, li, td, th, code');
 	items.forEach((item) => {
 		const htmlItem = item as HTMLElement;
-		htmlItem.innerHTML = htmlItem.innerHTML.replace(ERROR_CORRECTION_RE, (_, wrongText: string, correctText: string) => {
+		htmlItem.innerHTML = htmlItem.innerHTML.replace(regex, (_, wrongText: string, correctText: string) => {
 			const wrong = wrongText.trim();
 			const correct = correctText.trim();
 			if (!wrong || !correct) {
@@ -63,6 +79,9 @@ export function toggleErrorCorrection(target: HTMLElement, syntax: ErrorCorrecti
 
 	const resolved = target.getAttribute(ATTRS.errorCorrectionResolved) === 'true';
 	if (resolved) {
+		target.textContent = wrong;
+		target.setAttribute(ATTRS.errorCorrectionResolved, 'false');
+		target.setAttribute(ATTRS.errorCorrectionMarkerVisible, 'false');
 		return;
 	}
 
@@ -82,6 +101,30 @@ export function setErrorCorrectionMarkersVisibility(dom: ParentNode, visible: bo
 	});
 }
 
+export function resetErrorCorrections(dom: ParentNode): void {
+	dom.querySelectorAll<HTMLElement>(`.${CLASSES.errorCorrection}`).forEach((item) => {
+		if (!isErrorCorrectionResolved(item)) {
+			return;
+		}
+		const wrong = item.getAttribute(ATTRS.errorCorrectionWrong) || '';
+		if (!wrong) {
+			return;
+		}
+		item.textContent = wrong;
+		item.setAttribute(ATTRS.errorCorrectionResolved, 'false');
+		item.setAttribute(ATTRS.errorCorrectionMarkerVisible, 'false');
+	});
+}
+
+export function resolveAllErrorCorrections(dom: ParentNode): void {
+	dom.querySelectorAll<HTMLElement>(`.${CLASSES.errorCorrection}`).forEach((item) => {
+		if (isErrorCorrectionResolved(item)) {
+			return;
+		}
+		toggleErrorCorrection(item);
+	});
+}
+
 export function isErrorCorrectionMarkerVisible(target: HTMLElement): boolean {
 	return target.getAttribute(ATTRS.errorCorrectionMarkerVisible) === 'true';
 }
@@ -95,6 +138,8 @@ export default {
 	transformErrorCorrectionText,
 	toggleErrorCorrection,
 	setErrorCorrectionMarkersVisibility,
+	resetErrorCorrections,
+	resolveAllErrorCorrections,
 	isErrorCorrectionMarkerVisible,
 	isErrorCorrectionResolved,
 };

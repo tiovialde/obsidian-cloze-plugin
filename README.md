@@ -22,6 +22,7 @@ By enabling the following settings, the corresponding text will also automatical
 
 Select any text and right-click to open the Editor Menu. 
 
+- Add error correction: Wrap selected text as an error-correction template and place the cursor before `/` so you can type the wrong text immediately (e.g. selecting `sentence` produces `{/sentence}` and puts cursor after `{`).
 - Create cloze: Quickly convert the selection into a cloze.
 - Create cloze with hint: You will be prompted to input a hint for the cloze first.
 - Remove cloze: Batch remove clozes from the selected text.
@@ -65,6 +66,14 @@ There're mainly two options to give the cloze a hint by default.
 
 You can mark error-correction pairs with the syntax `{wrong text/correct text}`.
 
+You can customize the error-correction syntax in plugin settings:
+
+- Open symbol
+- Delimiter (between wrong and correct text)
+- Close symbol
+
+When changed, both parsing in reading mode and the `Add error correction` editor action will use your custom pattern.
+
 In reading mode, error corrections now support three states:
 
 - Hidden: the wrong text looks like regular text (no underline).
@@ -81,6 +90,7 @@ Notes:
 
 - Marker toggling affects unresolved items in the current reading view.
 - Corrected items stay corrected and are not re-marked.
+- Clicking the `Toggle error correction hints` ribbon icon also resets corrected items back to unresolved text.
 
 #### Fixed cloze width
 

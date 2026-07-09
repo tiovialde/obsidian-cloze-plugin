@@ -8,8 +8,11 @@ import { ATTRS, CLASSES } from './const';
 import langs from './lang/en';
 import errorCorrections from './error-corrections';
 
+const ERROR_CORRECTION_ICON = 'spell-check-2';
+
 export default class ClozePlugin extends Plugin {
 	settings: ClozePluginSettings;
+	errorCorrectionRibbonEl: HTMLElement | null = null;
 
 	isSourceHide = false;
 	isPreviewHide = true;
@@ -37,11 +40,12 @@ export default class ClozePlugin extends Plugin {
 				this.togglePageAllHide();
 			}
 		});
-		this.addRibbonIcon('alert-circle', lang.toggle_error_correction_hints, (evt: MouseEvent) => {
+		this.errorCorrectionRibbonEl = this.addRibbonIcon(ERROR_CORRECTION_ICON, lang.toggle_error_correction_hints, (evt: MouseEvent) => {
 			if(this.checkTags()) {
 				this.togglePageAllErrorCorrectionMarkers();
 			}
 		});
+		this.refreshErrorCorrectionRibbonTooltip();
 	}
 
 	private initEditorMenu() {
@@ -52,6 +56,14 @@ export default class ClozePlugin extends Plugin {
 			): void => {
 				const selection = editor.getSelection();
 				if (selection && this.checkTags()) {
+					menu.addItem((item) => {
+						item
+							.setTitle(lang.add_error_correction)
+							.onClick((e) => {
+								this.addErrorCorrection(editor);
+							});
+					});
+
 					if(this.settings.editorMenuAddCloze) {
 						menu.addItem((item) => {
 							item
@@ -86,6 +98,18 @@ export default class ClozePlugin extends Plugin {
 	}
 
 	private initCommand() {
+		this.addCommand({
+			id: "add-error-correction",
+			name: lang.add_error_correction,
+			icon: ERROR_CORRECTION_ICON,
+			editorCallback: (editor, ctx) => {
+				const selection = editor.getSelection();
+				if (selection && this.checkTags()) {
+					this.addErrorCorrection(editor);
+				}
+			}
+		})
+
 		this.addCommand({
 			id: "add-cloze",
 			name: lang.add_cloze,
@@ -161,7 +185,11 @@ export default class ClozePlugin extends Plugin {
 				this.transformBracketedText(element);
 			}
 
-			errorCorrections.transformErrorCorrectionText(element);
+			errorCorrections.transformErrorCorrectionText(element, {
+				open: this.settings.errorCorrectionOpen,
+				delimiter: this.settings.errorCorrectionDelimiter,
+				close: this.settings.errorCorrectionClose,
+			});
 			errorCorrections.setErrorCorrectionMarkersVisibility(element, this.isPreviewErrorCorrectionMarkersVisible);
 
 			// curly bracketed text need to be surrounded with span
@@ -178,6 +206,7 @@ export default class ClozePlugin extends Plugin {
 				});
 			
 			this.toggleAllHide(element, this.isAllHide());
+			this.refreshErrorCorrectionRibbonTooltip();
 		})
 	}
 
@@ -200,6 +229,7 @@ export default class ClozePlugin extends Plugin {
 				const correctionEl = utils.getErrorCorrectionEl(event.target as HTMLElement);
 				if (correctionEl) {
 					errorCorrections.toggleErrorCorrection(correctionEl);
+					this.refreshErrorCorrectionRibbonTooltip();
 					return;
 				}
 				this.toggleHide(utils.getClozeEl(event.target as HTMLElement));
@@ -224,6 +254,7 @@ export default class ClozePlugin extends Plugin {
 			const correctionEl = utils.getErrorCorrectionEl(event.target as HTMLElement);
 			if (correctionEl) {
 				errorCorrections.toggleErrorCorrection(correctionEl);
+				this.refreshErrorCorrectionRibbonTooltip();
 				return;
 			}
 			this.toggleHide(utils.getClozeEl(event.target as HTMLElement));
@@ -273,6 +304,46 @@ export default class ClozePlugin extends Plugin {
 		menu.showAtMouseEvent(event);
 	}
 
+	private getErrorCorrectionCycleAction(nodeContainers: NodeListOf<HTMLElement>): 'mark' | 'resolve' | 'reset' {
+		const unresolvedMarkedSelector = `.${CLASSES.errorCorrection}[${ATTRS.errorCorrectionResolved}="false"][${ATTRS.errorCorrectionMarkerVisible}="true"]`;
+		const unresolvedHiddenSelector = `.${CLASSES.errorCorrection}[${ATTRS.errorCorrectionResolved}="false"][${ATTRS.errorCorrectionMarkerVisible}="false"]`;
+		const resolvedSelector = `.${CLASSES.errorCorrection}[${ATTRS.errorCorrectionResolved}="true"]`;
+
+		const hasUnresolvedMarked = Array.from(nodeContainers).some((nodeContainer) => !!nodeContainer.querySelector(unresolvedMarkedSelector));
+		const hasUnresolvedHidden = Array.from(nodeContainers).some((nodeContainer) => !!nodeContainer.querySelector(unresolvedHiddenSelector));
+		const hasResolved = Array.from(nodeContainers).some((nodeContainer) => !!nodeContainer.querySelector(resolvedSelector));
+
+		if (hasUnresolvedMarked) {
+			return 'resolve';
+		}
+
+		if (hasResolved && !hasUnresolvedHidden) {
+			return 'reset';
+		}
+
+		return 'mark';
+	}
+
+	private refreshErrorCorrectionRibbonTooltip() {
+		if (!this.errorCorrectionRibbonEl) return;
+
+		const mostRecentLeaf = this.app.workspace.getMostRecentLeaf() as unknown as {containerEl: HTMLElement};
+		if (!mostRecentLeaf?.containerEl) return;
+
+		const nodeContainers = mostRecentLeaf.containerEl.querySelectorAll<HTMLElement>('.markdown-preview-view');
+		const nextAction = this.getErrorCorrectionCycleAction(nodeContainers);
+
+		let tooltip = lang.toggle_error_correction_hints_mark;
+		if (nextAction === 'resolve') {
+			tooltip = lang.toggle_error_correction_hints_resolve;
+		} else if (nextAction === 'reset') {
+			tooltip = lang.toggle_error_correction_hints_reset;
+		}
+
+		this.errorCorrectionRibbonEl.setAttribute('aria-label', tooltip);
+		this.errorCorrectionRibbonEl.setAttribute('title', tooltip);
+	}
+
 	private togglePageAllErrorCorrectionMarkers() {
 		if(!this.isPreviewMode()) return;
 
@@ -282,10 +353,33 @@ export default class ClozePlugin extends Plugin {
 		if(!leafContainer) return;
 
 		const nodeContainers = leafContainer.querySelectorAll<HTMLElement>('.markdown-preview-view');
+		const nextAction = this.getErrorCorrectionCycleAction(nodeContainers);
+
+		if (nextAction === 'resolve') {
+			nodeContainers.forEach((nodeContainer) => {
+				errorCorrections.resolveAllErrorCorrections(nodeContainer);
+				errorCorrections.setErrorCorrectionMarkersVisibility(nodeContainer, false);
+			});
+			this.isPreviewErrorCorrectionMarkersVisible = false;
+			this.refreshErrorCorrectionRibbonTooltip();
+			return;
+		}
+
+		if (nextAction === 'reset') {
+			nodeContainers.forEach((nodeContainer) => {
+				errorCorrections.resetErrorCorrections(nodeContainer);
+				errorCorrections.setErrorCorrectionMarkersVisibility(nodeContainer, false);
+			});
+			this.isPreviewErrorCorrectionMarkersVisible = false;
+			this.refreshErrorCorrectionRibbonTooltip();
+			return;
+		}
+
 		nodeContainers.forEach((nodeContainer) => {
-			errorCorrections.setErrorCorrectionMarkersVisibility(nodeContainer, !this.isPreviewErrorCorrectionMarkersVisible);
+			errorCorrections.setErrorCorrectionMarkersVisibility(nodeContainer, true);
 		})
-		this.isPreviewErrorCorrectionMarkersVisible = !this.isPreviewErrorCorrectionMarkersVisible;
+		this.isPreviewErrorCorrectionMarkersVisible = true;
+		this.refreshErrorCorrectionRibbonTooltip();
 	}
 
 	private isPreviewMode(): boolean {
@@ -485,6 +579,25 @@ export default class ClozePlugin extends Plugin {
 			editor.replaceSelection(newStr);
 			editor.blur();
 		}
+	}
+
+	addErrorCorrection = (editor: Editor) => {
+		const currentStr = editor.getSelection();
+		if (!currentStr) return;
+
+		const selectionStart = editor.getCursor("from");
+		const open = this.settings.errorCorrectionOpen;
+		const delimiter = this.settings.errorCorrectionDelimiter;
+		const close = this.settings.errorCorrectionClose;
+		if (!open || !delimiter || !close) return;
+
+		const newStr = `${open}${delimiter}${currentStr}${close}`;
+		editor.replaceSelection(newStr);
+		editor.setCursor({
+			line: selectionStart.line,
+			ch: selectionStart.ch + open.length,
+		});
+		editor.focus();
 	}
 
 	removeCloze = (editor: Editor) => {
