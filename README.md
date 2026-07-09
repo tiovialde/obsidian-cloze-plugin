@@ -22,7 +22,7 @@ By enabling the following settings, the corresponding text will also automatical
 
 Select any text and right-click to open the Editor Menu. 
 
-- Add error correction: Wrap selected text as an error-correction template and place the cursor before `/` so you can type the wrong text immediately (e.g. selecting `sentence` produces `{/sentence}` and puts cursor after `{`).
+- Add error correction: Wrap selected text as an error-correction template using your configured symbols (Open + Delimiter + selected text + Close), then place the cursor right after Open so you can type the wrong text immediately.
 - Create cloze: Quickly convert the selection into a cloze.
 - Create cloze with hint: You will be prompted to input a hint for the cloze first.
 - Remove cloze: Batch remove clozes from the selected text.
@@ -64,7 +64,7 @@ There're mainly two options to give the cloze a hint by default.
 
 #### Error correction
 
-You can mark error-correction pairs with the syntax `{wrong text/correct text}`.
+By default, you can mark error-correction pairs with the syntax `{wrong text/correct text}`.
 
 You can customize the error-correction syntax in plugin settings:
 
@@ -78,19 +78,21 @@ In reading mode, error corrections now support three states:
 
 - Hidden: the wrong text looks like regular text (no underline).
 - Marked: unresolved error-correction targets are shown with a dashed underline.
-- Corrected: click an unresolved target to show `<del>wrong</del> <mark>correct</mark>`.
+- Corrected: click an unresolved target to show `<del>wrong</del> <mark>correct</mark>`. Click it again to hide it back to Hidden.
 
-How to toggle error-correction markers (Hidden <-> Marked) for the current note in reading mode:
+How to trigger the global error-correction cycle for the current note in reading mode:
 
 - Click the error-correction ribbon icon.
 - Run the command `Toggle error correction hints`.
 - Right-click an unresolved error-correction target and choose `Toggle error correction hints`.
 
-Notes:
+Global cycle behavior:
 
-- Marker toggling affects unresolved items in the current reading view.
-- Corrected items stay corrected and are not re-marked.
-- Clicking the `Toggle error correction hints` ribbon icon also resets corrected items back to unresolved text.
+1. First trigger: underline unresolved items only (Marked).
+2. Second trigger: resolve all currently underlined unresolved items (Corrected).
+3. Third trigger: reset all resolved items back to Hidden.
+
+The ribbon tooltip changes to show the next action in the cycle, so users can see what the next click will do.
 
 #### Fixed cloze width
 
