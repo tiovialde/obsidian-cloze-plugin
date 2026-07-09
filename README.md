@@ -61,6 +61,27 @@ There're mainly two options to give the cloze a hint by default.
 
 🔥 New feature: You can also right-click on the cloze to access a menu option bar, and then click on "More Hint" to dynamically reveal a portion of the cloze.
 
+#### Error correction
+
+You can mark error-correction pairs with the syntax `{wrong text/correct text}`.
+
+In reading mode, error corrections now support three states:
+
+- Hidden: the wrong text looks like regular text (no underline).
+- Marked: unresolved error-correction targets are shown with a dashed underline.
+- Corrected: click an unresolved target to show `<del>wrong</del> <mark>correct</mark>`.
+
+How to toggle error-correction markers (Hidden <-> Marked) for the current note in reading mode:
+
+- Click the error-correction ribbon icon.
+- Run the command `Toggle error correction hints`.
+- Right-click an unresolved error-correction target and choose `Toggle error correction hints`.
+
+Notes:
+
+- Marker toggling affects unresolved items in the current reading view.
+- Corrected items stay corrected and are not re-marked.
+
 #### Fixed cloze width
 
 You may enable 'Fixed cloze width' in the settings, which helps to ensure that the original text length is not revealed.
@@ -101,7 +122,7 @@ body {
 	--cloze-underline-style: dashed;
 	--cloze-hint-color: blue;
 	--cloze-hint-font-size: 30px;
-	--cloze-fixed-width: 10px;
+	--cloze-fixed-width: 50px;
 }
 
 ```

@@ -6,12 +6,14 @@ import HintModal from './components/modal-hint';
 import utils from './utils';
 import { ATTRS, CLASSES } from './const';
 import langs from './lang/en';
+import errorCorrections from './error-corrections';
 
 export default class ClozePlugin extends Plugin {
 	settings: ClozePluginSettings;
 
 	isSourceHide = false;
 	isPreviewHide = true;
+	isPreviewErrorCorrectionMarkersVisible = false;
 
 	constructor(app: App, manifest: any) {
 		super(app, manifest);
@@ -33,6 +35,11 @@ export default class ClozePlugin extends Plugin {
 		this.addRibbonIcon('fish', lang.toggle_cloze, (evt: MouseEvent) => {
 			if(this.checkTags()) {
 				this.togglePageAllHide();
+			}
+		});
+		this.addRibbonIcon('alert-circle', lang.toggle_error_correction_hints, (evt: MouseEvent) => {
+			if(this.checkTags()) {
+				this.togglePageAllErrorCorrectionMarkers();
 			}
 		});
 	}
@@ -124,6 +131,16 @@ export default class ClozePlugin extends Plugin {
 				}
 			},
 		})
+
+		this.addCommand({
+			id: "toggle-error-correction-hints",
+			name: lang.toggle_error_correction_hints,
+			callback: () => {
+				if(this.checkTags()) {
+					this.togglePageAllErrorCorrectionMarkers();
+				}
+			},
+		})
 	}
 
 	private initMarkdownPostProcessor() {
@@ -143,6 +160,9 @@ export default class ClozePlugin extends Plugin {
 			if (this.settings.includeBracketed) {
 				this.transformBracketedText(element);
 			}
+
+			errorCorrections.transformErrorCorrectionText(element);
+			errorCorrections.setErrorCorrectionMarkersVisibility(element, this.isPreviewErrorCorrectionMarkersVisible);
 
 			// curly bracketed text need to be surrounded with span
 			if (this.settings.includeCurlyBrackets) {
@@ -177,12 +197,22 @@ export default class ClozePlugin extends Plugin {
 	private initPageClickEvent() {
 		this.registerDomEvent(document, 'click', (event) => {
 			if (this.isPreviewMode()) {
+				const correctionEl = utils.getErrorCorrectionEl(event.target as HTMLElement);
+				if (correctionEl) {
+					errorCorrections.toggleErrorCorrection(correctionEl);
+					return;
+				}
 				this.toggleHide(utils.getClozeEl(event.target as HTMLElement));
 			}
 		});
 		
 		this.registerDomEvent(document, 'contextmenu', (event)=>{
 			if (this.isPreviewMode()) { 
+				const correctionEl = utils.getErrorCorrectionEl(event.target as HTMLElement);
+				if (correctionEl) {
+					this.onErrorCorrectionRightClick(event, correctionEl);
+					return;
+				}
 				this.onRightClick(event, utils.getClozeEl(event.target as HTMLElement));
 			}
 		});
@@ -191,6 +221,11 @@ export default class ClozePlugin extends Plugin {
 	// init for new window
 	private initNewWindowPageClickEvent() {
 		const handler = (event: MouseEvent) => {
+			const correctionEl = utils.getErrorCorrectionEl(event.target as HTMLElement);
+			if (correctionEl) {
+				errorCorrections.toggleErrorCorrection(correctionEl);
+				return;
+			}
 			this.toggleHide(utils.getClozeEl(event.target as HTMLElement));
 		}
 		this.app.workspace.on('window-open', (a, win)=>{
@@ -221,6 +256,36 @@ export default class ClozePlugin extends Plugin {
 			})
 		);
 		menu.showAtMouseEvent(event);
+	}
+
+	private onErrorCorrectionRightClick(event: MouseEvent, correctionEl: HTMLElement) {
+		if (errorCorrections.isErrorCorrectionResolved(correctionEl)) return;
+
+		const menu = new Menu();
+		menu.addItem((item) =>
+			item
+			.setTitle(lang.toggle_error_correction_hints)
+			.setIcon("snail")
+			.onClick(() => {
+				this.togglePageAllErrorCorrectionMarkers();
+			})
+		);
+		menu.showAtMouseEvent(event);
+	}
+
+	private togglePageAllErrorCorrectionMarkers() {
+		if(!this.isPreviewMode()) return;
+
+		const mostRecentLeaf = this.app.workspace.getMostRecentLeaf() as unknown as {containerEl: HTMLElement};
+		if (!mostRecentLeaf) return;
+		const leafContainer = mostRecentLeaf.containerEl as HTMLElement;
+		if(!leafContainer) return;
+
+		const nodeContainers = leafContainer.querySelectorAll<HTMLElement>('.markdown-preview-view');
+		nodeContainers.forEach((nodeContainer) => {
+			errorCorrections.setErrorCorrectionMarkersVisibility(nodeContainer, !this.isPreviewErrorCorrectionMarkersVisible);
+		})
+		this.isPreviewErrorCorrectionMarkersVisible = !this.isPreviewErrorCorrectionMarkersVisible;
 	}
 
 	private isPreviewMode(): boolean {
@@ -288,16 +353,16 @@ export default class ClozePlugin extends Plugin {
 	}
 
 	transformBracketedText = (element: HTMLElement) => {
-		const items = element.querySelectorAll("p, h1, h2, h3, h4, h5, li, td, th, code");
+		const items = element.querySelectorAll<HTMLElement>("p, h1, h2, h3, h4, h5, li, td, th, code");
 		items.forEach((item: HTMLElement) => {
 			item.innerHTML = item.innerHTML.replace(/\[(.*?)\]/g, '<span class="cloze-span">$1</span>');
 		})
 	}
 
 	transformCurlyBracketedText = (element: HTMLElement) => {
-		const items = element.querySelectorAll("p, h1, h2, h3, h4, h5, li, td, th, code");
+		const items = element.querySelectorAll<HTMLElement>("p, h1, h2, h3, h4, h5, li, td, th, code");
 		items.forEach((item: HTMLElement) => {
-			item.innerHTML = item.innerHTML.replace(/\{(.*?)\}/g, '<span class="cloze-span">$1</span>');
+			item.innerHTML = item.innerHTML.replace(/\{([^{}\/]*)\}/g, '<span class="cloze-span">$1</span>');
 		})
 	}
 	

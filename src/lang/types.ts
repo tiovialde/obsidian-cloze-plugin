@@ -3,7 +3,9 @@ export interface Ilangs {
 	add_cloze_with_hint: string;
     remove_cloze: string;
     toggle_cloze: string;
+    toggle_error_correction_hints: string;
 	reveal_more_hint: string;
+	reveal_error_correction_hints: string;
     setting_selector_tag: string;
     setting_selector_tag_desc: string;
     setting_hide_by_default: string;

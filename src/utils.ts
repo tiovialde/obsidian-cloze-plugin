@@ -4,6 +4,9 @@ const utils = {
 	getClozeEl: (target: HTMLElement) : HTMLElement | null => {
 		return target.closest('.' + CLASSES.cloze);
 	},
+	getErrorCorrectionEl: (target: HTMLElement) : HTMLElement | null => {
+		return target.closest('.' + CLASSES.errorCorrection);
+	},
 	getClozeContentEl: (target: HTMLElement) : HTMLElement | null => {
 		return target.querySelector('.' + CLASSES.clozeContent);
 	},
